@@ -5,21 +5,25 @@ Group assignment group 4
 import numpy as np
 import pandas as pd
 import rdkit
+import sklearn
 from rdkit import Chem
 from rdkit.Chem import AllChem
 from rdkit.Chem import Draw
 from rdkit.Chem.Draw import IPythonConsole
 from rdkit.Chem import PandasTools
-smiles = 'COC(=O)c1c[nH]c2cc(OC(C)C)c(OC(C)C)cc2c1=O'
-mol = Chem.MolFromSmiles(smiles)
-print(mol)
-smi = Chem.MolToSmiles(mol)
-print(smi)
+from sklearn.decomposition import PCA
+from sklearn.datasets import make_classification
+
 
 class DataPrep:
 
     def __init__(self):
-        self.firstvariable = 0
+        self.testset = 'tested_molecules_v2.csv'
+        self.trainingset = 'tested_molecules-1.csv'
+        self.untestedset = 'untested_molecules.csv'
 
-    def first_function(self):
-        self.firstvariable
+    def openfiles(self):
+        self.test_data = pd.read_csv(self.testset)
+        self.training_data = pd.read_csv(self.trainingset)
+        self.untested_data = pd.read_csv(self.untestedset)
+
