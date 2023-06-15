@@ -55,7 +55,7 @@ class DrugDiscoveryEDA:
         """
         self.display_data_summary()
         self.plot_target_distribution()
-        self.visualize_molecular_structures()
+        #self.visualize_molecular_structures()
 
     def display_data_summary(self):
         """
@@ -109,8 +109,22 @@ class DrugDiscoveryEDA:
         """
         Analyze the correlations between descriptors and the target variable.
         """
-        correlation_matrix = self.data.corr()
+        self.corr_data = pd.DataFrame(self.data, columns=['ALDH1_inhibition','n_Atoms','MolecularWeight','LogP','TPSA','NumRotatableBonds','NumHDonors','NumHAcceptors','NumAromaticRings','NumSaturatedRings'])
+        correlation_matrix = self.corr_data.corr()
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        cax = ax.matshow(correlation_matrix, cmap='coolwarm', vmin=-1, vmax=1)
+        fig.colorbar(cax)
+        ticks = np.arange(0, len(self.corr_data.columns), 1)
+        ax.set_xticks(ticks)
+        plt.xticks(rotation=90)
+        ax.set_yticks(ticks)
+        ax.set_xticklabels(self.corr_data.columns)
+        ax.set_yticklabels(self.corr_data.columns)
+        plt.title("correlation matrix of dataset")
+        plt.show()
         print(correlation_matrix)
+
 
     def select_features(self, selected_features):
         """
@@ -149,6 +163,9 @@ c_test_data = data_prep.moldesc(test_data)
 
 eda = DrugDiscoveryEDA(c_test_data)
 eda.explore_data()
-eda.compute_descriptors()
-eda.analyze_descriptor_distribution("MolecularWeight")
+#eda.compute_descriptors()
+#eda.analyze_descriptor_distribution("MolecularWeight")
 eda.analyze_correlations()
+eda.select_features(['ALDH1_inhibition','n_Atoms','MolecularWeight','LogP','TPSA','NumRotatableBonds','NumHDonors','NumHAcceptors','NumAromaticRings','NumSaturatedRings'])
+eda.explore_feature_relationships()
+eda.perform_dimensionality_reduction()
