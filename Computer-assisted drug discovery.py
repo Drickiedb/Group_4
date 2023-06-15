@@ -8,12 +8,8 @@ import matplotlib.pyplot as plt
 import rdkit
 import sklearn
 from rdkit import Chem
-from rdkit.Chem import AllChem
-from rdkit.Chem import rdMolDescriptors
-from rdkit.Chem import Descriptors
-from rdkit.Chem.Draw import IPythonConsole
+from rdkit.Chem import Descriptors, MACCSkeys, AllChem, ChemicalFeatures
 from rdkit.Chem import PandasTools
-from rdkit import DataStructs
 from sklearn.decomposition import PCA
 from sklearn.datasets import make_classification
 
@@ -29,13 +25,21 @@ class DataPrep:
         self.untested_data = pd.read_csv(self.untestedset)
     def moldesc(self, data):
         PandasTools.AddMoleculeColumnToFrame(data, smilesCol='SMILES',includeFingerprints=True)
-        #fpgen = AllChem.GetRDKitFPGenerator()
         data["n_Atoms"] = data['ROMol'].map(lambda x: x.GetNumAtoms())
-        #data["pattern_fp"] = [fpgen.GetFingerprint(x) for x in data]
-        #data["pair_fp"]
-        #data["torsion_fp"]
-        #data["morgan_fp"] =
-        #data = data.drop(['ROMol'], axis=1)
+        data['MolecularWeight'] = data['SMILES'].apply(lambda x: Descriptors.MolWt(Chem.MolFromSmiles(x)))
+        data['LogP'] = data['SMILES'].apply(lambda x: Descriptors.MolLogP(Chem.MolFromSmiles(x)))
+        data['TPSA'] = data['SMILES'].apply(lambda x: Descriptors.TPSA(Chem.MolFromSmiles(x)))
+        data['NumRotatableBonds'] = data['SMILES'].apply(lambda x: Descriptors.NumRotatableBonds(Chem.MolFromSmiles(x)))
+        data['NumHDonors'] = data['SMILES'].apply(lambda x: Descriptors.NumHDonors(Chem.MolFromSmiles(x)))
+        data['NumHAcceptors'] = data['SMILES'].apply(lambda x: Descriptors.NumHAcceptors(Chem.MolFromSmiles(x)))
+        data['NumAromaticRings'] = data['SMILES'].apply(lambda x: Descriptors.NumAromaticRings(Chem.MolFromSmiles(x)))
+        data['NumSaturatedRings'] = data['SMILES'].apply(lambda x: Descriptors.NumSaturatedRings(Chem.MolFromSmiles(x)))
+
+        # Add molecular fingerprints
+        data['MACCS_Fingerprint'] = data['SMILES'].apply(
+            lambda x: MACCSkeys.GenMACCSKeys(Chem.MolFromSmiles(x)).ToBitString())
+        data['Morgan_Fingerprint'] = data['SMILES'].apply(
+            lambda x: AllChem.GetMorganFingerprintAsBitVect(Chem.MolFromSmiles(x), 2).ToBitString())
         print(data.head())
 DP = DataPrep()
 DP.__init__()
