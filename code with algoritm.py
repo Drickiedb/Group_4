@@ -13,6 +13,7 @@ from rdkit.Chem import Descriptors, MACCSkeys, AllChem, ChemicalFeatures
 from rdkit.Chem import PandasTools, Draw
 from sklearn.decomposition import PCA
 from sklearn.datasets import make_classification
+from sklearn import preprocessing
 from sklearn.ensemble import RandomForestClassifier
 
 class DataPrep:
@@ -42,8 +43,7 @@ class DataPrep:
         data['Morgan_Fingerprint'] = data['SMILES'].apply(
             lambda x: AllChem.GetMorganFingerprintAsBitVect(Chem.MolFromSmiles(x), 2).ToBitString())
         return data
-
-
+        
 class DrugDiscoveryEDA:
 
     def __init__(self, data):
@@ -141,31 +141,169 @@ class DrugDiscoveryEDA:
         """
         pd.plotting.scatter_matrix(self.data[self.selected_features], alpha=0.2)
         plt.show()
+    def data_scaling(self):
 
-    def perform_dimensionality_reduction(self):
+        standard_data = preprocessing.StandardScaler().fit(self.data[self.selected_features])
+        self.scaled_standard_data = standard_data.transform(self.data[self.selected_features])
+        plt.boxplot(self.scaled_standard_data)
+        plt.show()
+        return self.scaled_standard_data
+    def perform_dimensionality_reduction(self,untested_test=False):
         """
         Perform dimensionality reduction using PCA and visualize the reduced features.
         """
         pca = PCA(n_components=2)
-        reduced_features = pca.fit_transform(self.data[self.selected_features])
+        reduced_features = pca.fit_transform(self.scaled_standard_data)
         reduced_df = pd.DataFrame(reduced_features, columns=["PC1", "PC2"])
-        reduced_df["ALDH1_inhibition"] = self.data["ALDH1_inhibition"]
-        plt.scatter(reduced_df["PC1"], reduced_df["PC2"], c=reduced_df["ALDH1_inhibition"])
+        
+        if untested_test==False:
+            reduced_df["ALDH1_inhibition"] = self.data["ALDH1_inhibition"]
+            plt.scatter(reduced_df["PC1"], reduced_df["PC2"], c=reduced_df["ALDH1_inhibition"])
         plt.xlabel("PC1")
         plt.ylabel("PC2")
         plt.show()
+        return reduced_df
 
+def algoritm_classifier(training_data,test_data,untested_SMILES=None):
+    """
+    Code to run random forest classifier
+    """
+    reduced_training=training_data.drop(columns="ALDH1_inhibition")
+    
+    tr_labels=training_data["ALDH1_inhibition"]
+
+    
+    if untested_SMILES["SMILES"].all()==None:
+        reduced_test=test_data.drop(columns="ALDH1_inhibition")
+        te_labels=test_data["ALDH1_inhibition"]
+        prediction_df=pd.DataFrame()
+    else:
+        reduced_test=test_data
+        prediction_df=pd.DataFrame(untested_SMILES)
+        te_labels=None
+        
+    rf=RandomForestClassifier(n_estimators=1000, random_state=42)
+    
+    fit=rf.fit(reduced_training,tr_labels)
+    
+    prediction=rf.predict(reduced_test)
+    
+    
+    prediction_df["prediction"]=prediction
+    prediction_df["PC1"]=reduced_test["PC1"]
+    prediction_df["PC2"]=reduced_test["PC2"]
+    
+    return prediction_df, te_labels, reduced_training
+
+def algoritm_evaluation(prediction,te_labels):
+    """
+    Code to evaluate the algoritm used
+    """
+    
+    prediction_df=pd.DataFrame(prediction)
+    
+    right_predictions=prediction_df[prediction_df[0]==te_labels]
+    wrong_predictions=prediction_df[prediction_df[0]!=te_labels]
+    
+    t_pos=int(prediction_df[right_predictions==1].count())
+    #print("True positives:"+str(t_pos))
+    t_neg=int(prediction_df[right_predictions==0].count())
+    #print("True negative:"+str(t_neg))
+    f_pos=int(prediction_df[wrong_predictions==1].count())
+    #print("False positives:"+str(f_pos))
+    f_neg=int(prediction_df[wrong_predictions==0].count())
+    #print("False negative:"+str(f_neg))
+    
+    Sn0=t_neg/te_labels.value_counts()[0]
+    Pr0=t_neg/prediction_df[0].value_counts()[0]
+    
+    Sn1=t_pos/te_labels.value_counts()[1]
+    Pr1=t_pos/prediction_df[0].value_counts()[1]
+
+    BAcc=(Sn0+Sn1)/2
+    sensitivity=t_pos/(t_pos+f_neg)
+    specificity=t_neg/(t_neg+f_pos)
+    precision=t_pos/(t_pos+f_pos)
+    
+    results=[BAcc, sensitivity, specificity, precision]
+    return results
+    
+def data_conversion(c_test_data,untested_datatest=False):
+"""
+Converts data to use for algoritm.
+"""
+    test_eda=DrugDiscoveryEDA(c_test_data)
+    
+    
+    if untested_datatest==False:
+        test_eda.select_features(['ALDH1_inhibition','n_Atoms','MolecularWeight','LogP','TPSA','NumRotatableBonds','NumHDonors','NumHAcceptors','NumAromaticRings','NumSaturatedRings'])
+        test_eda.data_scaling()
+        data=test_eda.perform_dimensionality_reduction()
+    else:
+        test_eda.select_features(['n_Atoms','MolecularWeight','LogP','TPSA','NumRotatableBonds','NumHDonors','NumHAcceptors','NumAromaticRings','NumSaturatedRings'])
+        test_eda.data_scaling()
+        data=test_eda.perform_dimensionality_reduction(True)
+    
+    return data
+    
+def distance_calc(prediction,reduced_training):
+    """
+    calulates mean of training data and test data and grabs the 100 closest predicted inhibitors to this mean. 
+    """
+    
+    reduced_training["ALDH1_inhibition"]=training_data["ALDH1_inhibition"]
+    training_df=pd.DataFrame(reduced_training)
+
+    X=training_df["PC1"].groupby(training_df["ALDH1_inhibition"]).mean()
+    Y=training_df["PC2"].groupby(training_df["ALDH1_inhibition"]).mean()
+
+
+    one_mean_coordinates=[X[1],Y[1]]
+
+
+    prediction_1=prediction[prediction["prediction"]==1]
+    test=pd.DataFrame()
+    test["SMILES"]=prediction_1["SMILES"]
+    test["X"]=prediction_1["PC1"]
+    test["Y"]=prediction_1["PC2"]
+
+
+    test["distance"]=test["X"].sub(one_mean_coordinates[0]).mul(test["X"].sub(one_mean_coordinates[0])).to_frame('col')
+    test["distance"]=test["distance"].add(test["Y"].sub(one_mean_coordinates[1]).mul(test["Y"].sub(one_mean_coordinates[1]))).to_frame('col')
+    test["distance"]=np.sqrt(test["distance"])
+
+    final=test.sort_values(by="distance",ascending=True)
+
+    final_100=final.iloc[:100]
+    finale_index_SMILES=final_100["SMILES"]
+    finale_just_SMILES=finale_index_SMILES
+    finale_without.to_csv("Top_100_candidates_group_4.csv",index=False)
 
 # Usage example:
 data_prep = DataPrep()
-test_data = data_prep.load_data(data_prep.testset)
-c_test_data = data_prep.moldesc(test_data)
+raw_test_data = data_prep.load_data(data_prep.testset)
+c_test_data = data_prep.moldesc(raw_test_data)
+
+raw_training_data = data_prep.load_data(data_prep.trainingset)
+c_training_data = data_prep.moldesc(raw_training_data)
+
+raw_untested_data = data_prep.load_data(data_prep.untestedset)
+c_untested_data = data_prep.moldesc(raw_untested_data)
 
 eda = DrugDiscoveryEDA(c_test_data)
 eda.explore_data()
-#eda.compute_descriptors()
-#eda.analyze_descriptor_distribution("MolecularWeight")
+eda.compute_descriptors()
+eda.analyze_descriptor_distribution("MolecularWeight")
 eda.analyze_correlations()
 eda.select_features(['ALDH1_inhibition','n_Atoms','MolecularWeight','LogP','TPSA','NumRotatableBonds','NumHDonors','NumHAcceptors','NumAromaticRings','NumSaturatedRings'])
 eda.explore_feature_relationships()
+eda.data_scaling()
 eda.perform_dimensionality_reduction()
+
+
+
+training_data=data_conversion(c_training_data,False)
+test_data=data_conversion(c_untested_data,True)
+distance_calc(prediction,reduced_training)
+x=algoritm_evaluation(prediction, te_labels)
+print(x)
