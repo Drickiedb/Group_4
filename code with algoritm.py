@@ -14,6 +14,7 @@ from rdkit.Chem import PandasTools, Draw
 from sklearn.decomposition import PCA
 from sklearn.datasets import make_classification
 from sklearn import preprocessing
+from sklearn.ensemble import RandomForestClassifier
 
 
 class DataPrep:
