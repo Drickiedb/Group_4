@@ -16,6 +16,7 @@ from sklearn.datasets import make_classification
 from sklearn import preprocessing
 from sklearn.ensemble import RandomForestClassifier
 
+
 class DataPrep:
 
     def __init__(self):
@@ -148,7 +149,9 @@ class DrugDiscoveryEDA:
         plt.boxplot(self.scaled_standard_data)
         plt.show()
         return self.scaled_standard_data
+
     def perform_dimensionality_reduction(self,untested_test=False):
+
         """
         Perform dimensionality reduction using PCA and visualize the reduced features.
         """
@@ -234,6 +237,7 @@ Converts data to use for algoritm.
 """
     test_eda=DrugDiscoveryEDA(c_test_data)
     
+
     
     if untested_datatest==False:
         test_eda.select_features(['ALDH1_inhibition','n_Atoms','MolecularWeight','LogP','TPSA','NumRotatableBonds','NumHDonors','NumHAcceptors','NumAromaticRings','NumSaturatedRings'])
@@ -278,6 +282,7 @@ def distance_calc(prediction,reduced_training):
     finale_index_SMILES=final_100["SMILES"]
     finale_just_SMILES=finale_index_SMILES
     finale_without.to_csv("Top_100_candidates_group_4.csv",index=False)
+
 
 # Usage example:
 data_prep = DataPrep()
