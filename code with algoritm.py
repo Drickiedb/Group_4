@@ -13,6 +13,7 @@ from rdkit.Chem import Descriptors, MACCSkeys, AllChem, ChemicalFeatures
 from rdkit.Chem import PandasTools, Draw
 from sklearn.decomposition import PCA
 from sklearn.datasets import make_classification
+from sklearn import preprocessing
 
 
 class DataPrep:
@@ -141,13 +142,19 @@ class DrugDiscoveryEDA:
         """
         pd.plotting.scatter_matrix(self.data[self.selected_features], alpha=0.2)
         plt.show()
+    def data_scaling(self):
 
+        standard_data = preprocessing.StandardScaler().fit(self.data[self.selected_features])
+        self.scaled_standard_data = standard_data.transform(self.data[self.selected_features])
+        plt.boxplot(self.scaled_standard_data)
+        plt.show()
+        return self.scaled_standard_data
     def perform_dimensionality_reduction(self):
         """
         Perform dimensionality reduction using PCA and visualize the reduced features.
         """
         pca = PCA(n_components=2)
-        reduced_features = pca.fit_transform(self.data[self.selected_features])
+        reduced_features = pca.fit_transform(self.scaled_standard_data)
         reduced_df = pd.DataFrame(reduced_features, columns=["PC1", "PC2"])
         reduced_df["ALDH1_inhibition"] = self.data["ALDH1_inhibition"]
         plt.scatter(reduced_df["PC1"], reduced_df["PC2"], c=reduced_df["ALDH1_inhibition"])
@@ -234,6 +241,7 @@ eda.explore_data()
 eda.analyze_correlations()
 eda.select_features(['ALDH1_inhibition','n_Atoms','MolecularWeight','LogP','TPSA','NumRotatableBonds','NumHDonors','NumHAcceptors','NumAromaticRings','NumSaturatedRings'])
 eda.explore_feature_relationships()
+eda.data_scaling()
 eda.perform_dimensionality_reduction()
 
 
