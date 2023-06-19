@@ -13,7 +13,7 @@ from rdkit.Chem import Descriptors, MACCSkeys, AllChem, ChemicalFeatures
 from rdkit.Chem import PandasTools, Draw
 from sklearn.decomposition import PCA
 from sklearn.datasets import make_classification
-
+from sklearn.ensemble import RandomForestClassifier
 
 class DataPrep:
 
@@ -154,78 +154,12 @@ class DrugDiscoveryEDA:
         plt.xlabel("PC1")
         plt.ylabel("PC2")
         plt.show()
-        return reduced_df
 
-def algoritm_classifier(training_data,test_data):
-    """
-    Code to run random forest classifier
-    """
-    reduced_training=training_data.drop(columns="ALDH1_inhibition")
-    tr_labels=training_data["ALDH1_inhibition"]
-    
-    if 'ALDH1_inhibition' in test_data.columns:
-        reduced_test=test_data.drop(columns="ALDH1_inhibition")
-        te_labels=test_data["ALDH1_inhibition"]
-    
-    rf=RandomForestClassifier(n_estimators=1000, random_state=42)
-    fit=rf.fit(reduced_training,tr_labels)
-    prediction=rf.predict(reduced_test)
-    return prediction, te_labels
 
-def algoritm_evaluation(prediction,te_labels):
-    """
-    Code to evaluate the algoritm used
-    """
-    
-    prediction_df=pd.DataFrame(prediction)
-    
-    right_predictions=prediction_df[prediction_df[0]==te_labels]
-    wrong_predictions=prediction_df[prediction_df[0]!=te_labels]
-    
-    t_pos=int(prediction_df[right_predictions==1].count())
-    #print("True positives:"+str(t_pos))
-    t_neg=int(prediction_df[right_predictions==0].count())
-    #print("True negative:"+str(t_neg))
-    f_pos=int(prediction_df[wrong_predictions==1].count())
-    #print("False positives:"+str(f_pos))
-    f_neg=int(prediction_df[wrong_predictions==0].count())
-    #print("False negative:"+str(f_neg))
-    
-    Sn0=t_neg/te_labels.value_counts()[0]
-    Pr0=t_neg/prediction_df[0].value_counts()[0]
-    
-    Sn1=t_pos/te_labels.value_counts()[1]
-    Pr1=t_pos/prediction_df[0].value_counts()[1]
-
-    BAcc=(Sn0+Sn1)/2
-    sensitivity=t_pos/(t_pos+f_neg)
-    specificity=t_neg/(t_neg+f_pos)
-    precision=t_pos/(t_pos+f_pos)
-    
-    results=[BAcc, sensitivity, specificity, precision]
-    return results
-    
-def data_conversion(c_training_data,c_test_data):
-    training_eda=DrugDiscoveryEDA(c_training_data)
-    test_eda=DrugDiscoveryEDA(c_test_data)
-    
-    training_eda.select_features(['ALDH1_inhibition','n_Atoms','MolecularWeight','LogP','TPSA','NumRotatableBonds','NumHDonors','NumHAcceptors','NumAromaticRings','NumSaturatedRings'])
-    test_eda.select_features(['ALDH1_inhibition','n_Atoms','MolecularWeight','LogP','TPSA','NumRotatableBonds','NumHDonors','NumHAcceptors','NumAromaticRings','NumSaturatedRings'])
-    
-    training=training_eda.perform_dimensionality_reduction()
-    test=test_eda.perform_dimensionality_reduction()
-    return training, test
-  
 # Usage example:
 data_prep = DataPrep()
-raw_test_data = data_prep.load_data(data_prep.testset)
-c_test_data = data_prep.moldesc(raw_test_data)
-
-raw_training_data = data_prep.load_data(data_prep.trainingset)
-c_training_data = data_prep.moldesc(raw_training_data)
-
-raw_untested_data = data_prep.load_data(data_prep.untestedset)
-c_untested_data = data_prep.moldesc(raw_untested_data)
+test_data = data_prep.load_data(data_prep.testset)
+c_test_data = data_prep.moldesc(test_data)
 
 eda = DrugDiscoveryEDA(c_test_data)
 eda.explore_data()
@@ -235,10 +169,3 @@ eda.analyze_correlations()
 eda.select_features(['ALDH1_inhibition','n_Atoms','MolecularWeight','LogP','TPSA','NumRotatableBonds','NumHDonors','NumHAcceptors','NumAromaticRings','NumSaturatedRings'])
 eda.explore_feature_relationships()
 eda.perform_dimensionality_reduction()
-
-
-
-training_data,test_data=data_conversion(c_training_data,c_test_data)
-prediction,te_labels=algoritm_classifier(training_data, test_data)
-x=algoritm_evaluation(prediction, te_labels)
-print(x)
