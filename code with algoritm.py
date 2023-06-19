@@ -218,8 +218,10 @@ def data_conversion(c_training_data,c_test_data):
     
     training_eda.select_features(['ALDH1_inhibition','n_Atoms','MolecularWeight','LogP','TPSA','NumRotatableBonds','NumHDonors','NumHAcceptors','NumAromaticRings','NumSaturatedRings'])
     test_eda.select_features(['ALDH1_inhibition','n_Atoms','MolecularWeight','LogP','TPSA','NumRotatableBonds','NumHDonors','NumHAcceptors','NumAromaticRings','NumSaturatedRings'])
-    
+
+    training_eda.data_scaling()
     training=training_eda.perform_dimensionality_reduction()
+    test_eda.data_scaling()
     test=test_eda.perform_dimensionality_reduction()
     return training, test
   
